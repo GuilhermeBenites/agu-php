@@ -1,0 +1,29 @@
+auth_login:
+  path: /api/login
+  controller: App\Controller\AuthController::login
+  methods: POST
+
+auth_register:
+  path: /api/register
+  controller: App\Controller\AuthController::register
+  methods: POST
+
+get_tasks:
+  path: /api/tasks
+  controller: App\Controller\TaskController::getTasks
+  methods: GET
+
+create_task:
+  path: /api/tasks
+  controller: App\Controller\TaskController::createTask
+  methods: POST
+
+update_task:
+  path: /api/tasks/{id}
+  controller: App\Controller\TaskController::updateTask
+  methods: PUT
+
+delete_task:
+  path: /api/tasks/{id}
+  controller: App\Controller\TaskController::deleteTask
+  methods: DELETE
