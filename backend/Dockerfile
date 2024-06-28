@@ -1,5 +1,5 @@
 # Usando a imagem oficial do PHP 8.1
-FROM php:7.3-fpm
+FROM php:8.1-fpm
 
 # Instalar extensões necessárias
 RUN apt-get update && apt-get install -y \
