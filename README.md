@@ -38,8 +38,10 @@ A autenticação deve ser implementada no backend com PHP e Symfony.
 
 ### Backend:
 
-- PHP 7.3
-- Symfony 5.4
+- PHP 8.1
+- Symfony 6.0
+    - DTO
+    - Services
 - Doctrine
 - MySQL
 - Redis (opcional)
