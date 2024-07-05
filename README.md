@@ -29,6 +29,7 @@ A autenticação deve ser implementada no backend com PHP e Symfony.
 ### Frontend:
 
 - Angular 17
+- Rxjs ou Ngrx ou Signals
 - TypeScript 5.4/5.5
 - SASS
 - HTML 5.2
