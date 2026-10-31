@@ -1,6 +1,6 @@
 # Fase 5 — entrega e reprodução
 
-Validação local concluída em 31/10/2026. Publicação e CI remota serão registradas abaixo após as execuções; abertura das PRs atribuída ao candidato por sua orientação.
+Validação local e primeira CI remota concluídas em 31/10/2026. A abertura das PRs será feita manualmente pelo candidato, conforme sua orientação.
 
 ## Reprodução limpa
 
@@ -46,4 +46,8 @@ Destinos definidos pelo candidato: [backend](https://github.com/GuilhermeBenites
 
 ## Publicação e CI remota
 
-Em preparação. Não considerar CI remota aprovada até haver execução concluída registrada nesta seção. PRs não são abertas automaticamente por decisão do candidato.
+A implementação foi publicada na branch [feat/complete-task-manager](https://github.com/GuilhermeBenites/agu-php/tree/feat/complete-task-manager). A [execução 41246679661](https://github.com/GuilhermeBenites/agu-php/actions/runs/41246679661) aprovou todas as etapas no commit funcional a752ab70f9d1e87804a89b55893511465144c70f: instalação em runner novo, análise estática, testes/cobertura, benchmark, contrato/exemplos, smoke HTTP e coleta de artefatos. Um clone real dessa branch também foi conferido sem vendor, chaves ou configuração local.
+
+A revisão de documentação que registra o resultado não altera os fontes funcionais. A referência submission-v1 é a versão compatível consumida pelo frontend. [Checks atuais da branch](https://github.com/GuilhermeBenites/agu-php/actions/workflows/ci.yml?query=branch%3Afeat%2Fcomplete-task-manager).
+
+Abertura manual: [comparar main com a implementação](https://github.com/GuilhermeBenites/agu-php/compare/main...feat/complete-task-manager?expand=1), usando [o texto preparado](PR.md). Nenhuma PR foi criada pela automação.
