@@ -1,0 +1,37 @@
+name: Backend CI
+on:
+  push:
+    branches: ['**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare PHP 8.1 and MySQL
+        run: make setup
+      - name: Validate configuration, schema and code
+        run: make check
+      - name: Test with isolated MySQL and coverage
+        run: make test-coverage
+      - name: Measure cold and warm query cache
+        run: make benchmark
+      - name: Validate OpenAPI and documented examples
+        run: |
+          docker run --rm -v "$PWD/docs:/work/docs:ro" -v "$PWD/scripts:/work/scripts:ro" -w /work python:3.12-slim sh -c 'pip install --no-cache-dir -r scripts/contract-requirements.txt >/dev/null && python scripts/validate-contract.py'
+      - name: Check HTTP through Nginx
+        run: curl --fail http://localhost:8080/api/health
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: |
+            backend/var/coverage
+            backend/var/benchmarks
+          if-no-files-found: ignore
+      - name: Stop project services
+        if: always()
+        run: make down

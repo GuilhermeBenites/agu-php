@@ -1,0 +1,688 @@
+openapi: 3.0.3
+info:
+  title: AGU Tasks API
+  version: 0.1.0
+  description: |
+    Contrato definido na fase 0 e implementado nas fases 1 a 3; cache interno na fase 4.
+    API JSON com JWT Bearer. Datas de resposta em UTC com precisão de segundos.
+    Todas as respostas usam Cache-Control: no-store e X-Request-ID gerado pelo servidor.
+    Escritas aceitam apenas objetos JSON e rejeitam propriedades desconhecidas com 422.
+    JSON malformado ou corpo vazio resulta em 400; mídia diferente de application/json, em 415.
+    Para rotas protegidas, a autenticação é verificada antes dos dados de entrada.
+    OPTIONS de preflight é tratado pelo CORS, sem exigir JWT.
+servers:
+  - url: http://localhost:8080
+    description: Endereço local; configurável por ambiente.
+tags:
+  - name: Health
+    description: Inicialização da aplicação HTTP.
+  - name: Auth
+    description: Cadastro e sessão JWT.
+  - name: Tasks
+    description: Tarefas pertencentes ao usuário autenticado.
+security:
+  - bearerAuth: []
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      tags: [Health]
+      summary: Verificar inicialização HTTP
+      description: Liveness da aplicação. Não garante disponibilidade de MySQL ou Redis.
+      security: []
+      responses:
+        '200':
+          description: Aplicação inicializada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              example:
+                status: ok
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/register:
+    post:
+      operationId: registerUser
+      tags: [Auth]
+      summary: Criar uma conta
+      description: |
+        Username não aceita espaços e é convertido para lowercase ASCII após validação.
+        A senha não é normalizada. Cadastro não autentica automaticamente.
+        A unicidade do username é garantida também por constraint no MySQL.
+      security: []
+      requestBody:
+        $ref: '#/components/requestBodies/Credentials'
+      responses:
+        '201':
+          description: Conta criada. Nenhuma senha ou hash é exposto.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: 1
+                username: ana
+        '400':
+          $ref: '#/components/responses/InvalidJson'
+        '409':
+          $ref: '#/components/responses/UsernameTaken'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/login:
+    post:
+      operationId: loginUser
+      tags: [Auth]
+      summary: Autenticar e emitir JWT
+      description: |
+        Validação e lowercase de username idênticos ao cadastro. Credenciais estruturalmente
+        válidas, mas incorretas, retornam 401 com a mesma mensagem para usuário
+        inexistente e senha incorreta. TTL inicial de 3600 segundos, configurável
+        no servidor; expiresIn reflete o valor efetivo. Sem refresh token.
+      security: []
+      requestBody:
+        $ref: '#/components/requestBodies/Credentials'
+      responses:
+        '200':
+          description: Sessão emitida. O JWT é enviado como Bearer nas chamadas protegidas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                token: header.payload.signature
+                tokenType: Bearer
+                expiresIn: 3600
+                user:
+                  id: 1
+                  username: ana
+        '400':
+          $ref: '#/components/responses/InvalidJson'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/me:
+    get:
+      operationId: getCurrentUser
+      tags: [Auth]
+      summary: Consultar o usuário autenticado
+      responses:
+        '200':
+          description: Identidade da sessão validada no servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: 1
+                username: ana
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/tasks:
+    get:
+      operationId: listTasks
+      tags: [Tasks]
+      summary: Listar as tarefas do usuário autenticado
+      description: |
+        Ordenação fixa por createdAt DESC, id DESC. Sem filtros ou ordenação
+        configurável nesta versão. Parâmetros desconhecidos ou com tipo/valor
+        inválido retornam 422. Página além do total retorna 200 com items vazio.
+        totalPages = ceil(total / limit), sendo 0 quando total = 0.
+        A ordenação é determinística para uma massa estável, sem promessa de
+        snapshot entre requisições durante alterações concorrentes.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Página de tarefas, restrita ao proprietário autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskPage'
+              examples:
+                populated:
+                  value:
+                    items:
+                      - id: 42
+                        title: Revisar documentação
+                        description: Conferir o contrato da API.
+                        createdAt: '2026-10-30T14:00:00Z'
+                        updatedAt: '2026-10-30T14:00:00Z'
+                    pagination:
+                      page: 1
+                      limit: 20
+                      total: 1
+                      totalPages: 1
+                empty:
+                  value:
+                    items: []
+                    pagination:
+                      page: 1
+                      limit: 20
+                      total: 0
+                      totalPages: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createTask
+      tags: [Tasks]
+      summary: Criar uma tarefa
+      description: |
+        Proprietário sempre derivado do JWT; userId no corpo é rejeitado com 422.
+        Title é obrigatório. Description ausente, null ou vazia após trim vira null.
+        Limites de caracteres são validados no payload recebido; depois os textos têm trim.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+            examples:
+              withDescription:
+                value:
+                  title: Revisar documentação
+                  description: Conferir o contrato da API.
+              titleOnly:
+                value:
+                  title: Revisar documentação
+      responses:
+        '201':
+          description: Tarefa persistida, com Location apontando para sua consulta por ID.
+          headers:
+            Location:
+              description: Caminho do recurso criado.
+              schema:
+                type: string
+                example: /api/tasks/42
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: 42
+                title: Revisar documentação
+                description: Conferir o contrato da API.
+                createdAt: '2026-10-30T14:00:00Z'
+                updatedAt: '2026-10-30T14:00:00Z'
+        '400':
+          $ref: '#/components/responses/InvalidJson'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/tasks/{id}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      operationId: getTask
+      tags: [Tasks]
+      summary: Consultar uma tarefa para edição por URL
+      responses:
+        '200':
+          description: Tarefa pertencente ao usuário autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: 42
+                title: Revisar documentação
+                description: null
+                createdAt: '2026-10-30T14:00:00Z'
+                updatedAt: '2026-10-30T14:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      operationId: updateTask
+      tags: [Tasks]
+      summary: Substituir os campos editáveis de uma tarefa
+      description: |
+        Title e description são obrigatórios; description aceita null.
+        A normalização dos textos é igual à criação. ID, proprietário e datas
+        não são editáveis. createdAt permanece; updatedAt reflete a edição,
+        podendo coincidir com o valor anterior dentro do mesmo segundo.
+        Escritas concorrentes seguem last-write-wins, sem versionamento nesta versão.
+        Após autenticar, a busca por ID/proprietário precede a validação do corpo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+            example:
+              title: Revisar contrato e exemplos
+              description: null
+      responses:
+        '200':
+          description: Tarefa atualizada e persistida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: 42
+                title: Revisar contrato e exemplos
+                description: null
+                createdAt: '2026-10-30T14:00:00Z'
+                updatedAt: '2026-10-30T14:05:00Z'
+        '400':
+          $ref: '#/components/responses/InvalidJson'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteTask
+      tags: [Tasks]
+      summary: Excluir uma tarefa
+      description: |
+        Não recebe corpo. Exclui apenas tarefa do usuário autenticado.
+        Nova tentativa após exclusão retorna 404, preservando o estado já excluído.
+      responses:
+        '204':
+          description: Exclusão persistida. Resposta sem corpo, inclusive sem null JSON.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT assinado com RS256; assinatura e expiração verificadas no servidor.
+  parameters:
+    TaskId:
+      name: id
+      in: path
+      required: true
+      description: ID inteiro positivo. ID inválido, inexistente ou de outra conta retorna 404.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 2147483647
+      example: 42
+    Page:
+      name: page
+      in: query
+      description: Página a partir de 1. Valores fracionários ou não numéricos são inválidos.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 2147483647
+        default: 1
+      example: 1
+    Limit:
+      name: limit
+      in: query
+      description: Quantidade máxima de itens por página.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      example: 20
+  requestBodies:
+    Credentials:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Credentials'
+          example:
+            username: ana
+            password: senha-exemplo-123
+  schemas:
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+    Credentials:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{2,49}$'
+          description: |
+            Sem espaços. Letras, números, ponto, underscore e hífen; primeiro
+            caractere alfanumérico. Convertido para lowercase ASCII após validar.
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          writeOnly: true
+          x-maxBytes: 72
+          description: |
+            Mínimo de 8 caracteres e máximo de 72 bytes UTF-8, para compatibilidade
+            com o hasher auto/bcrypt. O limite em bytes exige validação adicional
+            no servidor e formulário. Sem trim ou alteração de caixa.
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, username]
+      properties:
+        id:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 2147483647
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: '^[a-z0-9][a-z0-9._-]{2,49}$'
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required: [token, tokenType, expiresIn, user]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          description: JWT real em execução; o exemplo de documentação não é um token utilizável.
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn:
+          type: integer
+          minimum: 1
+          description: TTL efetivo em segundos desde a emissão; usar exp do JWT para expiração local.
+        user:
+          $ref: '#/components/schemas/User'
+    TaskTitle:
+      type: string
+      minLength: 1
+      maxLength: 255
+      pattern: '\S'
+      description: De 1 a 255 caracteres no payload, com conteúdo não branco. Trim após validação.
+    TaskDescription:
+      type: string
+      nullable: true
+      maxLength: 10000
+      description: Até 10000 caracteres no payload. Após trim, string vazia é normalizada para null.
+    CreateTaskRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title:
+          $ref: '#/components/schemas/TaskTitle'
+        description:
+          $ref: '#/components/schemas/TaskDescription'
+    UpdateTaskRequest:
+      type: object
+      additionalProperties: false
+      required: [title, description]
+      properties:
+        title:
+          $ref: '#/components/schemas/TaskTitle'
+        description:
+          $ref: '#/components/schemas/TaskDescription'
+    UtcDateTime:
+      type: string
+      format: date-time
+      pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$'
+      description: Data UTC com precisão de segundos, como 2026-10-30T14:00:00Z.
+    Task:
+      type: object
+      additionalProperties: false
+      required: [id, title, description, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 2147483647
+        title:
+          $ref: '#/components/schemas/TaskTitle'
+        description:
+          $ref: '#/components/schemas/TaskDescription'
+        createdAt:
+          $ref: '#/components/schemas/UtcDateTime'
+        updatedAt:
+          $ref: '#/components/schemas/UtcDateTime'
+    Pagination:
+      type: object
+      additionalProperties: false
+      required: [page, limit, total, totalPages]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+    TaskPage:
+      type: object
+      additionalProperties: false
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Task'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    Violation:
+      type: object
+      additionalProperties: false
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          description: Campo do corpo/query; $ representa o corpo completo.
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [error, requestId]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+              enum:
+                - invalid_json
+                - validation_failed
+                - invalid_credentials
+                - token_missing
+                - token_invalid
+                - token_expired
+                - username_taken
+                - task_not_found
+                - unsupported_media_type
+                - method_not_allowed
+                - not_found
+                - internal_error
+            message:
+              type: string
+              minLength: 1
+            details:
+              type: array
+              description: Violações para validation_failed; array vazio nos demais erros.
+              items:
+                $ref: '#/components/schemas/Violation'
+        requestId:
+          type: string
+          pattern: '^[a-f0-9]{32}$'
+          description: ID gerado pelo servidor, igual ao header X-Request-ID da resposta.
+  responses:
+    InvalidJson:
+      description: JSON malformado ou corpo vazio.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: invalid_json
+              message: O corpo deve conter JSON válido.
+              details: []
+            requestId: '0123456789abcdef0123456789abcdef'
+    ValidationFailed:
+      description: JSON válido com formato/campos inválidos ou parâmetros de consulta inválidos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: validation_failed
+              message: Revise os campos informados.
+              details:
+                - field: title
+                  message: Informe o título.
+            requestId: '0123456789abcdef0123456789abcdef'
+    InvalidCredentials:
+      description: Usuário inexistente ou senha incorreta, sem distinguir os casos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: invalid_credentials
+              message: Usuário ou senha inválidos.
+              details: []
+            requestId: '0123456789abcdef0123456789abcdef'
+    Unauthorized:
+      description: Token ausente, inválido ou expirado. Mesmo envelope para firewall e controllers.
+      headers:
+        WWW-Authenticate:
+          description: Desafio de autenticação HTTP.
+          schema:
+            type: string
+            example: Bearer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          examples:
+            missing:
+              value:
+                error:
+                  code: token_missing
+                  message: Autenticação necessária.
+                  details: []
+                requestId: '0123456789abcdef0123456789abcdef'
+            invalid:
+              value:
+                error:
+                  code: token_invalid
+                  message: Token inválido.
+                  details: []
+                requestId: '0123456789abcdef0123456789abcdef'
+            expired:
+              value:
+                error:
+                  code: token_expired
+                  message: Sessão expirada. Entre novamente.
+                  details: []
+                requestId: '0123456789abcdef0123456789abcdef'
+    UsernameTaken:
+      description: Username normalizado já cadastrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: username_taken
+              message: Nome de usuário indisponível.
+              details: []
+            requestId: '0123456789abcdef0123456789abcdef'
+    TaskNotFound:
+      description: ID inválido, inexistente ou de outro proprietário; resposta idêntica nos três casos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: task_not_found
+              message: Tarefa não encontrada.
+              details: []
+            requestId: '0123456789abcdef0123456789abcdef'
+    UnsupportedMediaType:
+      description: Escrita com Content-Type diferente de application/json; charset UTF-8 é aceito.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: unsupported_media_type
+              message: Use Content-Type application/json.
+              details: []
+            requestId: '0123456789abcdef0123456789abcdef'
+    InternalError:
+      description: Falha inesperada. Detalhes internos permanecem apenas nos logs.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            error:
+              code: internal_error
+              message: Não foi possível concluir a operação.
+              details: []
+            requestId: '0123456789abcdef0123456789abcdef'

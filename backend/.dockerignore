@@ -1,0 +1,8 @@
+.git
+vendor
+var
+.env.local
+.env.*.local
+config/jwt/*.pem
+.env.local.php
+config/secrets/prod/prod.decrypt.private.php

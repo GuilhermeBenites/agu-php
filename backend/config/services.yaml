@@ -18,7 +18,19 @@ services:
         exclude:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
+            - '../src/DTO/'
+            - '../src/Exception/'
             - '../src/Kernel.php'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    App\Service\Task\TaskListQuery: '@App\Service\Task\ListTasks'
+
+    App\Service\Task\CachedTaskList:
+        decorates: App\Service\Task\TaskListQuery
+        arguments:
+            $inner: '@App\Service\Task\CachedTaskList.inner'
+            $cache: '@cache.task_lists'
+            $enabled: '%env(bool:TASK_CACHE_ENABLED)%'
+            $ttl: '%env(int:TASK_CACHE_TTL)%'

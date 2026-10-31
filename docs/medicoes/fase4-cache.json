@@ -1,0 +1,241 @@
+{
+    "measuredAtUtc": "2026-10-31T21:11:59+00:00",
+    "mysql": "8.0.44",
+    "php": "8.1.34",
+    "redis": "7.4.12",
+    "architecture": "aarch64",
+    "fixture": {
+        "users": 2,
+        "tasksPerUser": 10000,
+        "descriptionCharacters": 240,
+        "transaction": "uncommitted fixture rolled back in finally"
+    },
+    "scope": "TaskListQuery + DTO\/JSON; warm metadata\/DB, cleared identity map; excludes owner load (1 authentication query per HTTP request), routing, JWT, browser network and cache flush\/preheat. Cold = Redis empty per sample. Warm = Redis preheated. Sequential single process, 10 warmup + 100 measured samples per scenario.",
+    "results": [
+        {
+            "page": 1,
+            "mode": "uncached",
+            "limit": 20,
+            "samples": 100,
+            "queryCounts": [
+                2
+            ],
+            "medianMs": 0.805,
+            "p95Ms": 0.838,
+            "explain": [
+                {
+                    "sql": "SELECT t0_.id AS id_0, t0_.title AS title_1, t0_.description AS description_2, t0_.created_at AS created_at_3, t0_.updated_at AS updated_at_4, t0_.user_id AS user_id_5 FROM tasks t0_ WHERE t0_.user_id = ? ORDER BY t0_.created_at DESC, t0_.id DESC LIMIT 20",
+                    "plan": [
+                        {
+                            "id": 1,
+                            "select_type": "SIMPLE",
+                            "table": "t0_",
+                            "partitions": null,
+                            "type": "ref",
+                            "possible_keys": "idx_tasks_user_created_id,IDX_50586597A76ED395",
+                            "key": "idx_tasks_user_created_id",
+                            "key_len": "4",
+                            "ref": "const",
+                            "rows": 10000,
+                            "filtered": 100,
+                            "Extra": "Backward index scan"
+                        }
+                    ]
+                },
+                {
+                    "sql": "SELECT COUNT(*) FROM tasks t0 WHERE t0.user_id = ?",
+                    "plan": [
+                        {
+                            "id": 1,
+                            "select_type": "SIMPLE",
+                            "table": "t0",
+                            "partitions": null,
+                            "type": "ref",
+                            "possible_keys": "idx_tasks_user_created_id,IDX_50586597A76ED395",
+                            "key": "IDX_50586597A76ED395",
+                            "key_len": "4",
+                            "ref": "const",
+                            "rows": 10000,
+                            "filtered": 100,
+                            "Extra": "Using index"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "page": 1,
+            "mode": "cold",
+            "limit": 20,
+            "samples": 100,
+            "queryCounts": [
+                2
+            ],
+            "medianMs": 0.883,
+            "p95Ms": 0.933,
+            "explain": []
+        },
+        {
+            "page": 1,
+            "mode": "warm",
+            "limit": 20,
+            "samples": 100,
+            "queryCounts": [
+                0
+            ],
+            "medianMs": 0.064,
+            "p95Ms": 0.072,
+            "explain": []
+        },
+        {
+            "page": 250,
+            "mode": "uncached",
+            "limit": 20,
+            "samples": 100,
+            "queryCounts": [
+                2
+            ],
+            "medianMs": 2.382,
+            "p95Ms": 2.463,
+            "explain": [
+                {
+                    "sql": "SELECT t0_.id AS id_0, t0_.title AS title_1, t0_.description AS description_2, t0_.created_at AS created_at_3, t0_.updated_at AS updated_at_4, t0_.user_id AS user_id_5 FROM tasks t0_ WHERE t0_.user_id = ? ORDER BY t0_.created_at DESC, t0_.id DESC LIMIT 20 OFFSET 4980",
+                    "plan": [
+                        {
+                            "id": 1,
+                            "select_type": "SIMPLE",
+                            "table": "t0_",
+                            "partitions": null,
+                            "type": "ref",
+                            "possible_keys": "idx_tasks_user_created_id,IDX_50586597A76ED395",
+                            "key": "idx_tasks_user_created_id",
+                            "key_len": "4",
+                            "ref": "const",
+                            "rows": 10000,
+                            "filtered": 100,
+                            "Extra": "Backward index scan"
+                        }
+                    ]
+                },
+                {
+                    "sql": "SELECT COUNT(*) FROM tasks t0 WHERE t0.user_id = ?",
+                    "plan": [
+                        {
+                            "id": 1,
+                            "select_type": "SIMPLE",
+                            "table": "t0",
+                            "partitions": null,
+                            "type": "ref",
+                            "possible_keys": "idx_tasks_user_created_id,IDX_50586597A76ED395",
+                            "key": "IDX_50586597A76ED395",
+                            "key_len": "4",
+                            "ref": "const",
+                            "rows": 10000,
+                            "filtered": 100,
+                            "Extra": "Using index"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "page": 250,
+            "mode": "cold",
+            "limit": 20,
+            "samples": 100,
+            "queryCounts": [
+                2
+            ],
+            "medianMs": 2.443,
+            "p95Ms": 2.517,
+            "explain": []
+        },
+        {
+            "page": 250,
+            "mode": "warm",
+            "limit": 20,
+            "samples": 100,
+            "queryCounts": [
+                0
+            ],
+            "medianMs": 0.064,
+            "p95Ms": 0.076,
+            "explain": []
+        },
+        {
+            "page": 500,
+            "mode": "uncached",
+            "limit": 20,
+            "samples": 100,
+            "queryCounts": [
+                2
+            ],
+            "medianMs": 3.952,
+            "p95Ms": 4.247,
+            "explain": [
+                {
+                    "sql": "SELECT t0_.id AS id_0, t0_.title AS title_1, t0_.description AS description_2, t0_.created_at AS created_at_3, t0_.updated_at AS updated_at_4, t0_.user_id AS user_id_5 FROM tasks t0_ WHERE t0_.user_id = ? ORDER BY t0_.created_at DESC, t0_.id DESC LIMIT 20 OFFSET 9980",
+                    "plan": [
+                        {
+                            "id": 1,
+                            "select_type": "SIMPLE",
+                            "table": "t0_",
+                            "partitions": null,
+                            "type": "ref",
+                            "possible_keys": "idx_tasks_user_created_id,IDX_50586597A76ED395",
+                            "key": "idx_tasks_user_created_id",
+                            "key_len": "4",
+                            "ref": "const",
+                            "rows": 10000,
+                            "filtered": 100,
+                            "Extra": "Backward index scan"
+                        }
+                    ]
+                },
+                {
+                    "sql": "SELECT COUNT(*) FROM tasks t0 WHERE t0.user_id = ?",
+                    "plan": [
+                        {
+                            "id": 1,
+                            "select_type": "SIMPLE",
+                            "table": "t0",
+                            "partitions": null,
+                            "type": "ref",
+                            "possible_keys": "idx_tasks_user_created_id,IDX_50586597A76ED395",
+                            "key": "IDX_50586597A76ED395",
+                            "key_len": "4",
+                            "ref": "const",
+                            "rows": 10000,
+                            "filtered": 100,
+                            "Extra": "Using index"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "page": 500,
+            "mode": "cold",
+            "limit": 20,
+            "samples": 100,
+            "queryCounts": [
+                2
+            ],
+            "medianMs": 4.074,
+            "p95Ms": 4.559,
+            "explain": []
+        },
+        {
+            "page": 500,
+            "mode": "warm",
+            "limit": 20,
+            "samples": 100,
+            "queryCounts": [
+                0
+            ],
+            "medianMs": 0.066,
+            "p95Ms": 0.078,
+            "explain": []
+        }
+    ]
+}
