@@ -1,0 +1,7 @@
+services:
+    App\Tests\Support\QueryLog:
+        public: true
+    test.sql_logging_middleware:
+        class: Doctrine\DBAL\Logging\Middleware
+        arguments: ['@App\Tests\Support\QueryLog']
+        tags: [doctrine.middleware]

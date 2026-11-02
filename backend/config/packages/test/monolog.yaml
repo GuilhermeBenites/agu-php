@@ -1,0 +1,4 @@
+monolog:
+    handlers:
+        main:
+            path: '%kernel.logs_dir%/test.log'

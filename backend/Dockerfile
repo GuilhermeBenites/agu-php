@@ -1,30 +1,15 @@
-# Usando a imagem oficial do PHP 8.1
-FROM php:8.1-fpm
+FROM php:8.1.34-fpm-bookworm
 
-# Instalar extensões necessárias
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    libzip-dev \
-    zip \
-    unzip \
-    && docker-php-ext-install pdo_mysql zip
+RUN apt-get update && apt-get install -y --no-install-recommends git unzip libicu-dev libonig-dev libzip-dev \
+    && docker-php-ext-install -j"$(nproc)" intl mbstring pdo_mysql zip opcache \
+    && pecl install pcov-1.0.12 redis-6.1.0 \
+    && docker-php-ext-enable pcov redis \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Instalar Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Configurar o diretório de trabalho
+COPY --from=composer:2.8 /usr/bin/composer /usr/local/bin/composer
 WORKDIR /var/www/html
-
-# Copiar arquivos da aplicação
-COPY . .
-
-# Instalar dependências do Symfony
 ENV COMPOSER_ALLOW_SUPERUSER=1
-RUN composer config --no-plugins allow-plugins.symfony/flex true
-RUN composer install
-
-# Expor a porta
-EXPOSE 9000
-
-# Comando para iniciar o servidor
+COPY docker/php.ini /usr/local/etc/php/conf.d/agu.ini
+COPY . .
+RUN composer install --no-interaction --prefer-dist --no-progress --no-scripts
 CMD ["php-fpm"]

@@ -1,0 +1,192 @@
+{
+  "dateLocal": "2026-10-31",
+  "mode": "Clean working-tree exports without Git metadata, dependencies, keys, local env files, build output or reused data volumes. Runtime sources compared after tooling fixes; documentation/CI finalized separately.",
+  "ports": {
+    "api": 18080,
+    "frontend": 14200
+  },
+  "api": {
+    "tests": 86,
+    "assertions": 1095,
+    "lineCoverage": 92.91,
+    "commands": [
+      "make setup",
+      "make check",
+      "make test-coverage",
+      "make benchmark"
+    ],
+    "runtimeSourceFiles": 94,
+    "runtimeSourceSha256": "2476e8cd30d60d16c7a3cb0e17c69c8a753f2df72d453c4c63189ddd4b651672"
+  },
+  "frontend": {
+    "tests": 78,
+    "lineCoverage": 91.56,
+    "commands": [
+      "docker compose build frontend",
+      "docker compose run --rm frontend npm ci",
+      "docker compose up -d frontend",
+      "npm run check",
+      "npm run test:coverage",
+      "npm run build"
+    ],
+    "runtimeSourceFiles": 91,
+    "runtimeSourceSha256": "596a58dbd69b38fb4af15c69486be39c7e0726ccadefc05cdff9de9e8a086e7a"
+  },
+  "e2e": {
+    "normal": 20,
+    "redisUnavailable": 8,
+    "backendLocalConfig": "Deliberately invalid DB/cache/JWT settings overridden by temporary process environment; successful E2E proved isolation",
+    "populatedRedisKeys": 23
+  },
+  "contract": {
+    "contract": "0.1.0",
+    "examples": 59,
+    "http": [
+      {
+        "method": "POST",
+        "path": "/register",
+        "status": 201
+      },
+      {
+        "method": "POST",
+        "path": "/login",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/register",
+        "status": 201
+      },
+      {
+        "method": "POST",
+        "path": "/login",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/health",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/me",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/tasks",
+        "status": 401
+      },
+      {
+        "method": "GET",
+        "path": "/tasks",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/tasks",
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/tasks/{id}",
+        "status": 200
+      },
+      {
+        "method": "PUT",
+        "path": "/tasks/{id}",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/tasks",
+        "status": 201
+      },
+      {
+        "method": "POST",
+        "path": "/tasks",
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/tasks",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/tasks",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/tasks",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/tasks",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/tasks",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/tasks/{id}",
+        "status": 404
+      },
+      {
+        "method": "PUT",
+        "path": "/tasks/{id}",
+        "status": 404
+      },
+      {
+        "method": "DELETE",
+        "path": "/tasks/{id}",
+        "status": 404
+      },
+      {
+        "method": "POST",
+        "path": "/tasks",
+        "status": 400
+      },
+      {
+        "method": "POST",
+        "path": "/tasks",
+        "status": 415
+      },
+      {
+        "method": "POST",
+        "path": "/tasks",
+        "status": 422
+      },
+      {
+        "method": "POST",
+        "path": "/tasks",
+        "status": 422
+      },
+      {
+        "method": "GET",
+        "path": "/tasks",
+        "status": 422
+      },
+      {
+        "method": "PUT",
+        "path": "/tasks/{id}",
+        "status": 422
+      },
+      {
+        "method": "DELETE",
+        "path": "/tasks/{id}",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/tasks/{id}",
+        "status": 404
+      }
+    ]
+  }
+}

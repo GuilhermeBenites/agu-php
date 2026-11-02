@@ -1,43 +1,38 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use App\DTO\Auth\UserView;
+use App\Entity\User;
+use App\Http\CredentialsRequestMapper;
+use App\Service\Auth\AuthenticateUser;
+use App\Service\Auth\RegisterUser;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\Annotation\Route;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
-use Symfony\Component\Security\Core\User\UserInterface;
-use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
-use App\Entity\User;
+use Symfony\Component\HttpKernel\Attribute\AsController;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
-class AuthController extends AbstractController
+#[AsController]
+final class AuthController
 {
-    #[Route('/api/login', 'api_login', ['POST'])]
-    public function login(Request $request, JWTTokenManagerInterface $JWTManager, UserPasswordEncoderInterface $encoder): JsonResponse
+    #[Route('/api/login', name: 'api_login', methods: ['POST'])]
+    public function login(Request $request, CredentialsRequestMapper $input, AuthenticateUser $authenticate): JsonResponse
     {
-        $credentials = json_decode($request->getContent(), true);
-        $user = $this->getDoctrine()->getRepository(User::class)->findOneBy(['username' => $credentials['username']]);
-
-        if (!$user || !$encoder->isPasswordValid($user, $credentials['password'])) {
-            return new JsonResponse(['error' => 'Invalid credentials'], 401);
-        }
-
-        return new JsonResponse(['token' => $JWTManager->create($user)]);
+        return new JsonResponse($authenticate->execute($input->map($request)));
     }
 
-    #[Route('/api/register', 'api_register', ['POST'])]
-    public function register(Request $request, UserPasswordEncoderInterface $encoder): JsonResponse
+    #[Route('/api/register', name: 'api_register', methods: ['POST'])]
+    public function register(Request $request, CredentialsRequestMapper $input, RegisterUser $register): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        $user = new User();
-        $user->setUsername($data['username']);
-        $user->setPassword($encoder->encodePassword($user, $data['password']));
+        return new JsonResponse($register->execute($input->map($request)), 201);
+    }
 
-        $em = $this->getDoctrine()->getManager();
-        $em->persist($user);
-        $em->flush();
-
-        return new JsonResponse(['status' => 'User created'], 201);
+    #[Route('/api/me', name: 'api_me', methods: ['GET'])]
+    public function me(#[CurrentUser] User $user): JsonResponse
+    {
+        return new JsonResponse(UserView::fromUser($user));
     }
 }

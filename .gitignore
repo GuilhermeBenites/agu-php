@@ -1,3 +1,4 @@
-.idea
-/backend/vendor
-/backend/.env
+.idea/
+.env
+/backend/vendor/
+/backend/var/
